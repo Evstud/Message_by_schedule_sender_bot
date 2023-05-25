@@ -1,10 +1,11 @@
 from aiogram import Bot, Dispatcher
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from configuration import settings
-from apscheduler.schedulers.background import BackgroundScheduler
-
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import asyncio
-# import logging
+
+
+scheduler = AsyncIOScheduler(timezone="Europe/Moscow")
 
 
 async def main():
@@ -17,6 +18,7 @@ async def main():
     settings.register_handlers(dp)
     await settings.set_default_commands(dp)
     await dp.start_polling()
+    scheduler.start()
 
 
 if __name__ == "__main__":

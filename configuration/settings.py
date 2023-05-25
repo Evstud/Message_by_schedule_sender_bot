@@ -6,20 +6,12 @@ from handlers.msg_creation import register as reg_msg
 
 import logging
 
-logger = logging.getLogger('bot_logger')
-logger.setLevel(logging.INFO)
+logger = logging.getLogger(__name__)
 
-fi_handler = logging.FileHandler(filename='bot.log')
-fi_handler.setLevel(logging.INFO)
-
-fi_format = logging.Formatter(
-    fmt="%(asctime)s %(levelname)s %(message)s",
-    datefmt='%m%d%Y %I:%M:%p'
-)
-fi_handler.setFormatter(fi_format)
-
-logger.addHandler(fi_handler)
-
+logging.basicConfig(
+    level=logging.INFO,
+    format=u'[%(asctime)s] - %(message)s')
+logger.info("Starting bot")
 
 bot_token = config("BOT_TOKEN")
 

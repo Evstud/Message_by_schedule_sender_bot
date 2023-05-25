@@ -7,7 +7,8 @@ def create_table_message():
                 "status TEXT DEFAULT 'off',"
                 "msg JSONB,"
                 "schedule TEXT,"
-                "name TEXT)")
+                "name TEXT,"
+                "job_id SERIAL)")
     db.commit()
 
 
