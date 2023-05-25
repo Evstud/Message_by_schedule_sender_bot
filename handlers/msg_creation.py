@@ -6,25 +6,33 @@ from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.utils.exceptions import BadRequest
 from decouple import config
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+
 from aiogram import Bot, Dispatcher
 
 from keyboards import inline
 # from database.db_message import create_message
 from database.db_message import (create_message, delete_message, get_message, turn_on, turn_off,
                                  update_schedule)
+
+
 from aiogram.utils.callback_data import CallbackData
 from configuration import settings
 
 
 
 bot = Bot(config("BOT_TOKEN"), parse_mode="html")
+chat_to_send = config("GROUP_ID")
+
+scheduler = AsyncIOScheduler()
 
 
 class NewMessage(StatesGroup):
     prepare_to_save = State()
     name = State()
     body = State()
-    scheduler = State()
+    scheduler_ = State()
     choice = State()
 
 
@@ -88,7 +96,7 @@ async def create_msg_step4(msg: types.Message, state: FSMContext):
                 'caption': msg.text
             })
     await msg.answer("Введите расписание отправки задачи ('cron' формате): ")
-    await NewMessage.scheduler.set()
+    await NewMessage.scheduler_.set()
 
 
 async def create_msg_step5(msg: types.Message, state: FSMContext):
@@ -136,9 +144,8 @@ async def all_tasks(call: types.CallbackQuery):
 
 
 
-async def right_side(call: types.CallbackQuery):
+async def right_side(call: types.CallbackQuery, state: FSMContext):
     query_params = call.data.split(':')
-    print(query_params)
     chat_id = call.message.chat.id
     if query_params[2] == "show":
         inst = await get_message(query_params[1])
@@ -161,22 +168,11 @@ async def right_side(call: types.CallbackQuery):
             await bot.send_message(chat_id=chat_id, text=f"Расписание: {inst[3]}\n Статус: {inst[1]}", reply_markup=inline.single_info(inst[1], inst[0]))
             await MessagesHandler.individual.set()
 
-            print('ok text')
-
-        # await call.message.re
-        # await call.message.answer("second")
     elif query_params[2] == "status_on":
         await turn_on(query_params[1])
-        # inst = await get_message(query_params[1])
         await call.message.delete_reply_markup()
         await call.message.delete()
-        # await bot.send_message(chat_id=chat_id, text=f"Расписание: {inst[3]}\n"
-        #                                              f"Статус: {inst[1]}",
-        #                        reply_markup=inline.single_info(inst[1], inst[0]))
-
-        # await call.message.answer("Список задач:", reply_markup=await inline.kb_tasks_list())
         await bot.send_message(chat_id=chat_id, text=f'Список задач:', reply_markup=await inline.kb_tasks_list())
-
 
     elif query_params[2] == "status_off":
         await turn_off(query_params[1])
@@ -184,13 +180,25 @@ async def right_side(call: types.CallbackQuery):
         await call.message.delete()
         await bot.send_message(chat_id=chat_id, text=f'Список задач:', reply_markup=await inline.kb_tasks_list())
 
-
-        # await call.message.answer("Список задач:", reply_markup=await inline.kb_tasks_list())
-
     elif query_params[2] == "ch":
-        pass
+        inst = await get_message(query_params[1])
+        async with state.proxy() as data:
+            data['msg_id'] = query_params[1]
+            data['old_sche'] = inst[3]
+        await call.message.delete_reply_markup()
+        await call.message.delete()
+        await bot.send_message(chat_id=chat_id, text="Введите новое расписание: ")
+        await MessagesHandler.ch_ind_sch.set()
+
     elif query_params[2] == "dele":
-        pass
+        try:
+            await call.message.delete_reply_markup()
+            await call.message.delete()
+            await delete_message(query_params[1])
+            await bot.send_message(chat_id=chat_id, text=f"Задача удалена.",
+                                   reply_markup=inline.kb_back_to_main())
+        except Exception as exx:
+            await call.message.edit_text(f"Задача не удалена, по причине: {exx}.")
 
 
 async def right_side_individual(call: types.CallbackQuery, state: FSMContext):
@@ -209,6 +217,19 @@ async def right_side_individual(call: types.CallbackQuery, state: FSMContext):
     elif 'turn_on' == query_params[2]:
         await turn_on(query_params[1])
         inst = await get_message(query_params[1])
+        cron_date_dict = get_cron_date(inst[3])
+
+        # minute hour day month day_of_week   inst[3]
+        scheduler.add_job(
+            send_msg(query_params[1], chat_to_send, chat_id),
+            'cron',
+            minute=cron_date_dict['minute'],
+            hour=cron_date_dict['hour'],
+            day=cron_date_dict['day'],
+            month=cron_date_dict['month'],
+            day_of_week=cron_date_dict['day_of_week']
+        )
+
         await call.message.delete_reply_markup()
         await call.message.delete()
         await bot.send_message(chat_id=chat_id, text=f"Расписание: {inst[3]}\n"
@@ -226,7 +247,6 @@ async def right_side_individual(call: types.CallbackQuery, state: FSMContext):
         await MessagesHandler.ch_ind_sch.set()
 
     else:
-
         try:
             await call.message.delete_reply_markup()
             await call.message.delete()
@@ -260,6 +280,30 @@ async def change_schedule2(call: types.CallbackQuery, state: FSMContext):
     await state.finish()
 
 
+async def send_msg(msg_id, chat_id, chat_admin_id):
+    inst = await get_message(msg_id)
+    try:
+        if 'photo_id' in inst[2].keys():
+            await bot.send_photo(chat_id=chat_id, photo=inst[2]['photo_id'], caption=inst[2]['caption'])
+
+        elif 'document_id' in inst[2].keys():
+            await bot.send_document(chat_id=chat_id, document=inst[2]['document_id'], caption=inst[2]['caption'])
+
+        else:
+            await bot.send_message(chat_id=chat_id, text=f"Текст сообщения: {inst[2]['caption']}")
+    except Exception as exx:
+        await bot.send_message(chat_id=chat_admin_id, text=f"Ошибка при отправке сообщения: {exx}")
+
+
+async def get_cron_date(schedule):
+    num_list = schedule.split(' ')
+    dict_to_send = {'minute': num_list[0],
+                    'hour': num_list[1],
+                    'day': num_list[2],
+                    'month': num_list[3],
+                    'day_of_week': num_list[4]}
+    return dict_to_send
+
 
 def register(dp: Dispatcher):
     dp.register_callback_query_handler(main_menu_button, text='back_main', state='*')
@@ -269,7 +313,7 @@ def register(dp: Dispatcher):
     dp.register_message_handler(create_msg_step4, content_types=[
         'photo', 'text', 'audio', 'document', 'sticker', 'voice', 'location', 'contact', 'new_chat_members',
         'pinned_message', 'web_app_data'], state=NewMessage.body)
-    dp.register_message_handler(create_msg_step5, state=NewMessage.scheduler)
+    dp.register_message_handler(create_msg_step5, state=NewMessage.scheduler_)
     dp.register_callback_query_handler(save_or_not, text=['yes', 'no'], state=NewMessage.choice)
     dp.register_callback_query_handler(create_another_task, text='another_task')
     dp.register_callback_query_handler(all_tasks, text='all_msgs')

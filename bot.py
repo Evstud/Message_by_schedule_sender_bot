@@ -1,6 +1,7 @@
 from aiogram import Bot, Dispatcher
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from configuration import settings
+from apscheduler.schedulers.background import BackgroundScheduler
 
 import asyncio
 # import logging
