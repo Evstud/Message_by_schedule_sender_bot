@@ -77,7 +77,7 @@ async def create_msg_step4(msg: types.Message, state: FSMContext):
             data['msg'] = json.dumps({
                 'caption': msg.text
             })
-    await msg.answer("Введите расписание отправки задачи ('cron' формате): ")
+    await msg.answer("Введите расписание отправки задачи в 'cron' формате: ")
     await NewMessage.scheduler_.set()
 
 
@@ -142,7 +142,7 @@ async def right_side(call: types.CallbackQuery, state: FSMContext):
         else:
             await call.message.delete_reply_markup()
             await call.message.delete()
-            await bot.send_message(chat_id=chat_id, text=f"Текст сообщения: {inst[2]['caption']}")
+            await bot.send_message(chat_id=chat_id, text=f"{inst[2]['caption']}")
             await bot.send_message(chat_id=chat_id, text=f"Расписание: {inst[3]}\n Статус: {inst[1]}",
                                    reply_markup=inline.single_info(inst[1], inst[0]))
             await MessagesHandler.individual.set()
@@ -192,6 +192,10 @@ async def right_side(call: types.CallbackQuery, state: FSMContext):
             await call.message.delete_reply_markup()
             await call.message.delete()
             await delete_message(query_params[1])
+            try:
+                await delete_job(inst[5])
+            except:
+                pass
             await bot.send_message(chat_id=chat_id, text=f"Задача удалена.",
                                    reply_markup=inline.kb_back_to_main())
         except Exception as exx:
@@ -200,6 +204,7 @@ async def right_side(call: types.CallbackQuery, state: FSMContext):
 
 async def right_side_individual(call: types.CallbackQuery, state: FSMContext):
     query_params = call.data.split(':')
+    inst = await get_message(query_params[1])
     if 'turn_off' == query_params[2]:
         await turn_off(query_params[1])
         inst = await get_message(query_params[1])
@@ -214,7 +219,6 @@ async def right_side_individual(call: types.CallbackQuery, state: FSMContext):
 
     elif 'turn_on' == query_params[2]:
         await turn_on(query_params[1])
-        inst = await get_message(query_params[1])
         cron_date_dict = await get_cron_date(inst[3])
         try:
             await create_job(
@@ -251,6 +255,10 @@ async def right_side_individual(call: types.CallbackQuery, state: FSMContext):
             await call.message.delete_reply_markup()
             await call.message.delete()
             await delete_message(query_params[1])
+            try:
+                await delete_job(inst[5])
+            except:
+                pass
             await bot.send_message(chat_id=chat_id, text=f"Задача удалена.",
                                    reply_markup=inline.kb_back_to_main())
 

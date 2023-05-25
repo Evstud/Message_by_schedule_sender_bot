@@ -16,7 +16,7 @@ async def send_msg(inst, chat_id, chat_admin_id, bot):
             await bot.send_document(chat_id=chat_id, document=inst[2]['document_id'], caption=inst[2]['caption'])
 
         else:
-            await bot.send_message(chat_id=chat_id, text=f"Текст сообщения: {inst[2]['caption']}")
+            await bot.send_message(chat_id=chat_id, text=f"{inst[2]['caption']}")
     except Exception as exx:
         await bot.send_message(chat_id=chat_admin_id, text=f"Ошибка при отправке сообщения: {exx}")
 
