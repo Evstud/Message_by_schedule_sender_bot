@@ -1,0 +1,15 @@
+version: '3'
+services:
+        postgres:
+                image: postgres
+                environment:
+                        POSTGRES_USER: test_user
+                        POSTGRES_PASSWORD: sh_mess_pwd
+                        POSTGRES_DB: shedule_mess
+                ports:
+                        - 5432:5432
+                volumes:
+                        - ./postgres-db:/var/lib/postgresql/data
+                restart: on-failure
+volumes:
+        postgres-db:
