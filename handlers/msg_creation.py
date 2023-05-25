@@ -138,6 +138,7 @@ async def all_tasks(call: types.CallbackQuery):
 
 async def right_side(call: types.CallbackQuery):
     query_params = call.data.split(':')
+    print(query_params)
     chat_id = call.message.chat.id
     if query_params[2] == "show":
         inst = await get_message(query_params[1])
@@ -164,8 +165,28 @@ async def right_side(call: types.CallbackQuery):
 
         # await call.message.re
         # await call.message.answer("second")
-    elif query_params[2] == "status":
-        pass
+    elif query_params[2] == "status_on":
+        await turn_on(query_params[1])
+        # inst = await get_message(query_params[1])
+        await call.message.delete_reply_markup()
+        await call.message.delete()
+        # await bot.send_message(chat_id=chat_id, text=f"Расписание: {inst[3]}\n"
+        #                                              f"Статус: {inst[1]}",
+        #                        reply_markup=inline.single_info(inst[1], inst[0]))
+
+        # await call.message.answer("Список задач:", reply_markup=await inline.kb_tasks_list())
+        await bot.send_message(chat_id=chat_id, text=f'Список задач:', reply_markup=await inline.kb_tasks_list())
+
+
+    elif query_params[2] == "status_off":
+        await turn_off(query_params[1])
+        await call.message.delete_reply_markup()
+        await call.message.delete()
+        await bot.send_message(chat_id=chat_id, text=f'Список задач:', reply_markup=await inline.kb_tasks_list())
+
+
+        # await call.message.answer("Список задач:", reply_markup=await inline.kb_tasks_list())
+
     elif query_params[2] == "ch":
         pass
     elif query_params[2] == "dele":
@@ -236,6 +257,7 @@ async def change_schedule2(call: types.CallbackQuery, state: FSMContext):
                 await call.message.answer('Изменение расписания отменено.', reply_markup=inline.kb_back_to_main())
         except Exception as exx:
             await call.message.answer(f'Расписание не изменено по причине: {exx}', reply_markup=inline.kb_back_to_main())
+    await state.finish()
 
 
 

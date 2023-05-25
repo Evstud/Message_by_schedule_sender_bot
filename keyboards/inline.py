@@ -59,13 +59,13 @@ async def kb_tasks_list() -> InlineKeyboardMarkup:
         if task[1] == 'on':
             # print(task[0])
             button_show = InlineKeyboardButton("Показать", callback_data=rent_callback.new(id=task[0], action="show"))
-            button_status = InlineKeyboardButton("Выключить", callback_data=rent_callback.new(id=task[0], action="status"))
+            button_status = InlineKeyboardButton("Выключить", callback_data=rent_callback.new(id=task[0], action="status_off"))
             kb.add(button_show, button_status)
 
         # elif task[1] == 'off':
         else:
             button_show = InlineKeyboardButton("Показать", callback_data=rent_callback.new(id=task[0], action="show"))
-            button_status = InlineKeyboardButton("Выключить", callback_data=rent_callback.new(id=task[0], action="status"))
+            button_status = InlineKeyboardButton("Включить", callback_data=rent_callback.new(id=task[0], action="status_on"))
             kb.add(button_show, button_status)
         button_ch = InlineKeyboardButton("Изменить расписание", callback_data=rent_callback.new(id=task[0], action="ch"))
         button_del = InlineKeyboardButton("Удалить", callback_data=rent_callback.new(id=task[0], action="dele"))
