@@ -16,7 +16,7 @@ chat_id = config("ADMIN_ID")
 
 
 class NewMessage(StatesGroup):
-    prepare_to_save = State()
+    # prepare_to_save = State()
     name = State()
     body = State()
     scheduler_ = State()
@@ -32,35 +32,48 @@ class MessagesHandler(StatesGroup):
 
 async def main_menu_button(call: types.CallbackQuery, state: FSMContext):
     try:
-        await call.message.delete()
+        print(call.message)
         await call.message.delete_reply_markup()
         await state.finish()
         name = call.from_user.first_name
         await call.message.answer(f"Hello, {name}!", reply_markup=inline.kb_main_menu())
+        await call.message.delete()
+
+        # await NewMessage.prepare_to_save.set()
     except BadRequest:
+        # if call.message:
+        #     await call.message.delete()
+        await call.message.delete_reply_markup()
         await state.finish()
         name = call.from_user.first_name
         await call.message.answer(f"Hello, {name}!", reply_markup=inline.kb_main_menu())
+        await call.message.delete()
+
+        # await NewMessage.prepare_to_save.set()
+
+
+
+# async def create_msg_step1(call: types.CallbackQuery):
+#     await NewMessage.prepare_to_save.set()
+#     await call.message.edit_text("Выберите действие:", reply_markup=inline.kb_save_and_main())
 
 
 async def create_msg_step1(call: types.CallbackQuery):
-    await NewMessage.prepare_to_save.set()
-    await call.message.edit_text("Выберите действие:", reply_markup=inline.kb_save_and_main())
-
-
-async def create_msg_step2(call: types.CallbackQuery):
-    await call.message.answer("Введите название задачи:")
+    # await call.
+    # await call.message.delete()
+    await call.message.delete_reply_markup()
+    await call.message.edit_text("Введите название задачи:", reply_markup=inline.kb_back_to_main())
     await NewMessage.name.set()
 
 
-async def create_msg_step3(msg: types.Message, state: FSMContext):
+async def create_msg_step2(msg: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['name'] = msg.text
     await msg.answer("Введите сообщение: ")
     await NewMessage.body.set()
 
 
-async def create_msg_step4(msg: types.Message, state: FSMContext):
+async def create_msg_step3(msg: types.Message, state: FSMContext):
     async with state.proxy() as data:
         if 'document' in msg.iter_keys():
             data['msg'] = json.dumps({
@@ -81,7 +94,7 @@ async def create_msg_step4(msg: types.Message, state: FSMContext):
     await NewMessage.scheduler_.set()
 
 
-async def create_msg_step5(msg: types.Message, state: FSMContext):
+async def create_msg_step4(msg: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['schedule'] = msg.text
         await msg.answer(f"Сохранить данную задачу?\n\n"
@@ -299,13 +312,13 @@ async def change_schedule2(call: types.CallbackQuery, state: FSMContext):
 
 def register(dp: Dispatcher):
     dp.register_callback_query_handler(main_menu_button, text='back_main', state='*')
+    # dp.register_callback_query_handler(create_msg_step1, text='create_msg')
     dp.register_callback_query_handler(create_msg_step1, text='create_msg')
-    dp.register_callback_query_handler(create_msg_step2, text='save', state=NewMessage.prepare_to_save)
-    dp.register_message_handler(create_msg_step3, state=NewMessage.name)
-    dp.register_message_handler(create_msg_step4, content_types=[
+    dp.register_message_handler(create_msg_step2, state=NewMessage.name)
+    dp.register_message_handler(create_msg_step3, content_types=[
         'photo', 'text', 'audio', 'document', 'sticker', 'voice', 'location', 'contact', 'new_chat_members',
         'pinned_message', 'web_app_data'], state=NewMessage.body)
-    dp.register_message_handler(create_msg_step5, state=NewMessage.scheduler_)
+    dp.register_message_handler(create_msg_step4, state=NewMessage.scheduler_)
     dp.register_callback_query_handler(save_or_not, text=['yes', 'no'], state=NewMessage.choice)
     dp.register_callback_query_handler(create_another_task, text='another_task')
     dp.register_callback_query_handler(all_tasks, text='all_msgs')

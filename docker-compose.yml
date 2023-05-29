@@ -11,5 +11,3 @@ services:
                 volumes:
                         - ./postgres-db:/var/lib/postgresql/data
                 restart: on-failure
-volumes:
-        postgres-db:

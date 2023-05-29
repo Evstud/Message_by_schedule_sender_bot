@@ -2,6 +2,7 @@ from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
 from decouple import config
 from keyboards.inline import kb_main_menu
+# from handlers.msg_creation import NewMessage
 
 
 async def bot_start(msg: types.Message, state: FSMContext):
@@ -9,6 +10,7 @@ async def bot_start(msg: types.Message, state: FSMContext):
         await state.finish()
         if int(config("ADMIN_ID")) == msg.from_user.id:
             await msg.answer(f"Hello, {msg.from_user.first_name}!", reply_markup=kb_main_menu())
+            # await NewMessage.prepare_to_save.set()
         else:
             await msg.answer(f"You aren't an admin of this group.")
     else:
