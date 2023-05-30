@@ -13,7 +13,7 @@ logging.basicConfig(
     format=u'[%(asctime)s] - %(message)s')
 logger.info("Starting bot")
 
-bot_token = config("BOT_TOKEN")
+# bot_token = config("BOT_TOKEN")
 
 
 async def set_default_commands(dp):

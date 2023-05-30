@@ -1,10 +1,10 @@
 from datetime import datetime
 from aiogram import Bot
 from decouple import config
-from bot import scheduler
+# from bot_main import scheduler
 
 
-bot = Bot(config("BOT_TOKEN"), parse_mode="html")
+# bot = Bot(config("BOT_TOKEN"), parse_mode="html")
 
 
 async def send_msg(inst, chat_id, chat_admin_id, bot):
@@ -33,7 +33,7 @@ async def get_cron_date(schedule):
     return dict_to_send
 
 
-async def create_job(inst, chat_to_send, chat_id, cron_date_dict, job_id):
+async def create_job(inst, chat_to_send, chat_id, cron_date_dict, job_id, scheduler, bot):
     try:
         scheduler.add_job(
             send_msg,
@@ -52,5 +52,5 @@ async def create_job(inst, chat_to_send, chat_id, cron_date_dict, job_id):
         await bot.send_message(chat_id=chat_id, text=f"Job не создана: {exxxx}")
 
 
-async def delete_job(job_id):
+async def delete_job(job_id, scheduler):
     scheduler.remove_job(f"{job_id}")

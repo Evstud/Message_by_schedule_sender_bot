@@ -4,13 +4,14 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.utils.exceptions import BadRequest
 from decouple import config
-from bot import scheduler
+# from bot_main import scheduler
+from bot_main import bot
 from keyboards import inline
 from database.db_message import (create_message, delete_message, get_message, turn_on, turn_off,
                                  update_schedule)
 from service_functions.to_cron_sheduler import get_cron_date, create_job, delete_job
 
-bot = Bot(config("BOT_TOKEN"), parse_mode="html")
+# bot = Bot(config("BOT_TOKEN"), parse_mode="html")
 chat_to_send = config("GROUP_ID")
 chat_id = config("ADMIN_ID")
 
@@ -32,7 +33,6 @@ class MessagesHandler(StatesGroup):
 
 async def main_menu_button(call: types.CallbackQuery, state: FSMContext):
     try:
-        print(call.message)
         await call.message.delete_reply_markup()
         await state.finish()
         name = call.from_user.first_name
@@ -52,80 +52,107 @@ async def main_menu_button(call: types.CallbackQuery, state: FSMContext):
         # await NewMessage.prepare_to_save.set()
 
 
-
 # async def create_msg_step1(call: types.CallbackQuery):
 #     await NewMessage.prepare_to_save.set()
 #     await call.message.edit_text("Выберите действие:", reply_markup=inline.kb_save_and_main())
 
 
-async def create_msg_step1(call: types.CallbackQuery):
-    # await call.
-    # await call.message.delete()
+async def create_msg_step1(call: types.CallbackQuery, state: FSMContext):
     await call.message.delete_reply_markup()
-    await call.message.edit_text("Введите название задачи:", reply_markup=inline.kb_back_to_main())
+    msg = await call.message.edit_text("Введите название задачи:", reply_markup=inline.kb_back_to_main())
+    async with state.proxy() as data:
+        data['msg_id_to_del1'] = msg.message_id
     await NewMessage.name.set()
 
 
 async def create_msg_step2(msg: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['name'] = msg.text
-    await msg.answer("Введите сообщение: ")
+    await bot.send_message(text=f"Название новой задачи: \"{msg.text}\"", chat_id=msg.from_id)
+    await bot.delete_message(chat_id=msg.from_id, message_id=data['msg_id_to_del1'])
+    await bot.delete_message(chat_id=msg.from_id, message_id=msg.message_id)
+    message = await bot.send_message(text="Введите сообщение:", chat_id=msg.from_id, reply_markup=inline.kb_back_to_main())
+    async with state.proxy() as data:
+        data['msg_id_to_del2'] = message.message_id
     await NewMessage.body.set()
 
 
 async def create_msg_step3(msg: types.Message, state: FSMContext):
     async with state.proxy() as data:
-        if 'document' in msg.iter_keys():
-            data['msg'] = json.dumps({
-                'document_id': msg['document']['file_id'],
-                'caption': msg['caption']
-            })
-        elif 'photo' in msg.iter_keys():
+        if 'photo' in msg.iter_keys():
             data['msg'] = json.dumps({
                 'photo_id': msg['photo'][0]['file_id'],
                 'caption': msg['caption']
             })
+            await bot.send_photo(chat_id=chat_id, photo=msg['photo'][0]['file_id'], caption=f"Текст сообщения новой задачи: {msg['caption']}")
+            await bot.delete_message(chat_id=msg.from_id, message_id=data['msg_id_to_del2'])
+            await bot.delete_message(chat_id=msg.from_id, message_id=msg.message_id)
+
+        elif 'document' in msg.iter_keys():
+            data['msg'] = json.dumps({
+                'document_id': msg['document']['file_id'],
+                'caption': msg['caption']
+            })
+            await bot.send_document(chat_id=msg.from_id, document=msg['document']['file_id'], caption=f"Текст сообщения новой задачи: {msg['caption']}")
+            await bot.delete_message(chat_id=msg.from_id, message_id=data['msg_id_to_del2'])
+            await bot.delete_message(chat_id=msg.from_id, message_id=msg.message_id)
+            # await bot.send_document(chat_id=chat_id, document=inst[2]['document_id'], caption=inst[2]['caption'])
 
         elif 'text' in msg.iter_keys():
             data['msg'] = json.dumps({
                 'caption': msg.text
             })
-    await msg.answer("Введите расписание отправки задачи в 'cron' формате: ")
+            await bot.send_message(chat_id=chat_id, text=f"Текст сообщения новой задачи: {msg.text}")
+            await bot.delete_message(chat_id=msg.from_id, message_id=data['msg_id_to_del2'])
+            await bot.delete_message(chat_id=msg.from_id, message_id=msg.message_id)
+
+        message = await bot.send_message(text="Введите расписание отправки задачи в 'cron' формате:", chat_id=msg.from_id, reply_markup=inline.kb_back_to_main())
+        data['msg_id_to_del3'] = message.message_id
     await NewMessage.scheduler_.set()
 
 
 async def create_msg_step4(msg: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['schedule'] = msg.text
-        await msg.answer(f"Сохранить данную задачу?\n\n"
-                         f"Название задачи: {data['name']},\n"
-                         f"Текст: {json.loads(data['msg'])['caption']},\n"
-                         f"Расписание отправки: {data['schedule']}.", reply_markup=inline.kb_yesno())
-        await NewMessage.choice.set()
+    await bot.send_message(chat_id=msg.from_id, text=f"Расписание отправки новой задачи: {data['schedule']}")
+    await bot.delete_message(chat_id=msg.from_id, message_id=data['msg_id_to_del3'])
+    await bot.delete_message(chat_id=msg.from_id, message_id=msg.message_id)
+    message = await bot.send_message(chat_id=msg.from_id, text=f"Сохранить данную задачу?\n\n",
+                     # f"Название задачи: {data['name']},\n"
+                     # f"Текст: {json.loads(data['msg'])['caption']},\n"
+                     # f"Расписание отправки: {data['schedule']}.",
+                                     reply_markup=inline.kb_yesno())
+    async with state.proxy() as data:
+        data['msg_id_to_del4'] = message.message_id
+    await NewMessage.choice.set()
 
 
 async def save_or_not(call: types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         dict_to_save = data.as_dict()
-        print(dict_to_save)
+        await call.message.delete_reply_markup()
+        # print(dict_to_save)
         if call.data == 'yes':
             try:
                 await create_message(dict_to_save)
             except Exception as ex:
-                await call.message.edit_text(f"Задача не сохранена: {ex}")
+                await call.message.edit_text(f"Задача '{dict_to_save['name']}' не создана: {ex}")
             else:
-                await call.message.edit_text("Задача успешно сохранена.",
+                await call.message.edit_text(f"Задача '{dict_to_save['name']}' успешно создана.",
                                              reply_markup=inline.kb_back_after_task_creation())
 
         elif call.data == 'no':
-            await call.message.edit_text("Сохранение задачи отменено.",
+            await call.message.edit_text(f"Сохранение задачи '{dict_to_save['name']}' отменено.",
                                          reply_markup=inline.kb_back_after_task_creation())
 
     await state.finish()
 
 
 async def create_another_task(call: types.CallbackQuery, state: FSMContext):
-    await call.message.answer("Введите название задачи:")
+    await call.message.delete_reply_markup()
+    message = await call.message.answer("Введите название задачи:")
+    async with state.proxy() as data:
+        data['msg_id_to_del1'] = message.message_id  ## call.message.message_id
     await NewMessage.name.set()
 
 
