@@ -1,6 +1,8 @@
+import textwrap
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.callback_data import CallbackData
 from database.db_message import get_messages
+
 
 
 def kb_main_menu() -> InlineKeyboardMarkup:
@@ -45,10 +47,19 @@ def kb_back_after_task_creation() -> InlineKeyboardMarkup:
 async def kb_tasks_list() -> InlineKeyboardMarkup:
     tasks = await get_messages()
     rent_callback = CallbackData("ri_si", "id", "action")
-    kb = InlineKeyboardMarkup()
+    kb = InlineKeyboardMarkup(resize_keyboard=True)
     for task in tasks:
-        button_gen = InlineKeyboardButton(f"Name: {task[4]},\nStatus: {task[1]},\nSchedule: {task[3]}.\n",
+        # InlineKeyboardButton()
+        # button_text = f"Name: {task[4]}, \n\n" \
+        #               f"Status: {task[1]}, \n\n" \
+        #               f"Schedule: {task[3]}. \n\n"
+        button_gen = InlineKeyboardButton(f"Name: {task[4]}.",
+        #                                   f"Status: {task[1]},\n\n"
+        #                                   f"Schedule: {task[3]}.",
+        #                                   url=f'Shedule: {task[3]}',
                                           callback_data=rent_callback.new(id=task[0], action="general"))
+        # button_gen = InlineKeyboardButton(text=button_text,
+        #                                   callback_data=rent_callback.new(id=task[0], action="general"))
         kb.add(button_gen)
         if task[1] == 'on':
             button_show = InlineKeyboardButton("Показать", callback_data=rent_callback.new(id=task[0], action="show"))

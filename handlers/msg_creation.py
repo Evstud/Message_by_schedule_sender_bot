@@ -37,7 +37,7 @@ async def main_menu_button(call: types.CallbackQuery, state: FSMContext):
         await state.finish()
         name = call.from_user.first_name
         await call.message.answer(f"Hello, {name}!", reply_markup=inline.kb_main_menu())
-        await call.message.delete()
+        # await call.message.delete()
 
         # await NewMessage.prepare_to_save.set()
     except BadRequest:
@@ -158,6 +158,8 @@ async def create_another_task(call: types.CallbackQuery, state: FSMContext):
 
 async def all_tasks(call: types.CallbackQuery):
     await call.message.answer("Список задач:", reply_markup=await inline.kb_tasks_list())
+    await call.message.delete_reply_markup()
+    await call.message.delete()
     await MessagesHandler.base_st.set()
 
 
