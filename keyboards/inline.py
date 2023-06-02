@@ -1,8 +1,7 @@
 import textwrap
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.callback_data import CallbackData
-from database.db_message import get_messages
-
+from database.db_message import get_messages, get_message
 
 
 def kb_main_menu() -> InlineKeyboardMarkup:
@@ -49,43 +48,50 @@ async def kb_tasks_list() -> InlineKeyboardMarkup:
     rent_callback = CallbackData("ri_si", "id", "action")
     kb = InlineKeyboardMarkup(resize_keyboard=True)
     for task in tasks:
-        # InlineKeyboardButton()
-        # button_text = f"Name: {task[4]}, \n\n" \
-        #               f"Status: {task[1]}, \n\n" \
-        #               f"Schedule: {task[3]}. \n\n"
-        button_gen = InlineKeyboardButton(f"Name: {task[4]}.",
-        #                                   f"Status: {task[1]},\n\n"
-        #                                   f"Schedule: {task[3]}.",
-        #                                   url=f'Shedule: {task[3]}',
-                                          callback_data=rent_callback.new(id=task[0], action="general"))
-        # button_gen = InlineKeyboardButton(text=button_text,
-        #                                   callback_data=rent_callback.new(id=task[0], action="general"))
+        button_gen = InlineKeyboardButton(
+            f"Name: {task[4]}",
+            callback_data=rent_callback.new(id=task[0], action="show"))
+        button_del = InlineKeyboardButton(
+            "Удалить",
+            callback_data=rent_callback.new(id=task[0], action="dele"))
+        button_ch = InlineKeyboardButton(
+            f"Shedule: {task[3]}",
+            callback_data=rent_callback.new(id=task[0], action="ch"))
         kb.add(button_gen)
+        kb.add(button_ch)
+
         if task[1] == 'on':
-            button_show = InlineKeyboardButton("Показать", callback_data=rent_callback.new(id=task[0], action="show"))
-            button_status = InlineKeyboardButton("Выключить", callback_data=rent_callback.new(id=task[0], action="status_off"))
-            kb.add(button_show, button_status)
+            button_status = InlineKeyboardButton(
+                f"Status: {task[1]}  \U00002705",
+                callback_data=rent_callback.new(id=task[0], action="status_off"))
+            kb.add(button_del, button_status)
         else:
-            button_show = InlineKeyboardButton("Показать", callback_data=rent_callback.new(id=task[0], action="show"))
-            button_status = InlineKeyboardButton("Включить", callback_data=rent_callback.new(id=task[0], action="status_on"))
-            kb.add(button_show, button_status)
-        button_ch = InlineKeyboardButton("Изменить расписание", callback_data=rent_callback.new(id=task[0], action="ch"))
-        button_del = InlineKeyboardButton("Удалить", callback_data=rent_callback.new(id=task[0], action="dele"))
-        kb.add(button_ch, button_del)
-    button_back = InlineKeyboardButton("Главное меню", callback_data="back_main")
+            button_status = InlineKeyboardButton(
+                f"Status: {task[1]}  ⛔",
+                callback_data=rent_callback.new(id=task[0], action="status_on"))
+            kb.add(button_del, button_status)
+    button_back = InlineKeyboardButton(
+        "Главное меню",
+        callback_data="back_main")
     kb.add(button_back)
     return kb
 
 
-def single_info(status, inst_id):
+async def single_info(inst_id):
+    msg = await get_message(inst_id)
+    status = msg[1]
     rent_callback = CallbackData("ind_ch", "id", "action")
     if status == 'on':
-        button_st = InlineKeyboardButton('Выключить', callback_data=rent_callback.new(id=inst_id, action='turn_off'))
+        button_st = InlineKeyboardButton(
+            f'Статус: {status}  \U00002705',
+            callback_data=rent_callback.new(id=inst_id, action='turn_off'))
     else:
-        button_st = InlineKeyboardButton('Включить', callback_data=rent_callback.new(id=inst_id, action='turn_on'))
+        button_st = InlineKeyboardButton(
+            f'Статус: {status}  ⛔',
+            callback_data=rent_callback.new(id=inst_id, action='turn_on'))
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [button_st],
-        [InlineKeyboardButton('Изменить расписание', callback_data=rent_callback.new(id=inst_id, action='change_sch'))],
+        [InlineKeyboardButton(f'{msg[3]}', callback_data=rent_callback.new(id=inst_id, action='change_sch'))],
         [InlineKeyboardButton('Удалить', callback_data=rent_callback.new(id=inst_id, action='delete'))],
         [InlineKeyboardButton('Главное меню', callback_data='back_main')]
 

@@ -6,12 +6,14 @@ from decouple import config
 import asyncio
 
 
-bot = Bot(config("BOT_TOKEN"), parse_mode="html")
+# bot = Bot(config("BOT_TOKEN"), parse_mode="html")
+scheduler = AsyncIOScheduler(timezone="Europe/Moscow")
 
 
 async def main():
     settings.logger.info("Bot started.")
 
+    bot = Bot(config("BOT_TOKEN"), parse_mode="html")
     # bot = Bot(settings.bot_token, parse_mode="html")
     storage = MemoryStorage()
     dp = Dispatcher(bot, storage=storage)

@@ -34,6 +34,10 @@ async def turn_off(msg_id):
     db.commit()
 
 
+# async def change_job_id(msg_id, job_id):
+#     cur.execute("UPDATE message SET job_id = %s WHERE id = %s", (job_id, msg_id))
+
+
 async def update_schedule(msg_id, sche):
     cur.execute("UPDATE message SET schedule = %s WHERE id = %s", (sche, msg_id))
     db.commit()

@@ -35,7 +35,7 @@ async def get_cron_date(schedule):
 
 async def create_job(inst, chat_to_send, chat_id, cron_date_dict, job_id, scheduler, bot):
     try:
-        scheduler.add_job(
+        job = scheduler.add_job(
             send_msg,
             'cron',
             id=str(job_id),
@@ -48,8 +48,9 @@ async def create_job(inst, chat_to_send, chat_id, cron_date_dict, job_id, schedu
             day_of_week=cron_date_dict['day_of_week']
 
         )
-    except Exception  as exxxx:
-        await bot.send_message(chat_id=chat_id, text=f"Job не создана: {exxxx}")
+        return job
+    except Exception as exxxx:
+        await bot.send_message(chat_id=chat_id, text=f"Ошибка при создании расписания отправки {exxxx}")
 
 
 async def delete_job(job_id, scheduler):
