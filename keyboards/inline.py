@@ -1,4 +1,3 @@
-import textwrap
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.callback_data import CallbackData
 from database.db_message import get_messages, get_message
@@ -97,4 +96,3 @@ async def single_info(inst_id):
 
     ])
     return kb
-

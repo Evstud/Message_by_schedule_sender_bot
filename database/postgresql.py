@@ -1,12 +1,13 @@
 import psycopg2
+from decouple import config
 
 
 db = psycopg2.connect(
-    host="127.0.0.1",
-    database="shedule_mess",
-    user="test_user",
-    password="sh_mess_pwd",
-    port=5432
+    host=f"{config('POSTGRES_HOSTNAME')}",
+    database=f"{config('POSTGRES_DB')}",
+    user=f"{config('POSTGRES_USER')}",
+    password=f"{config('POSTGRES_PASSWORD')}",
+    port=f"{config('DATABASE_PORT')}"
 )
 
 cur = db.cursor()
