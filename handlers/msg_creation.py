@@ -8,7 +8,7 @@ from bot_main import scheduler
 # from bot_main import bot
 from keyboards import inline
 from database.db_message import (create_message, delete_message, get_message, turn_on, turn_off,
-                                 update_schedule)
+                                 update_schedule, get_messages)
 from service_functions.to_cron_sheduler import get_cron_date, create_job, delete_job
 
 # bot = Bot(config("BOT_TOKEN"), parse_mode="html")
@@ -256,9 +256,15 @@ async def create_another_task(call: types.CallbackQuery, state: FSMContext):
 
 
 async def all_tasks(call: types.CallbackQuery):
-    await call.message.answer(
-        "Список задач:",
-        reply_markup=await inline.kb_tasks_list())
+    messages = await get_messages()
+    if messages:
+        await call.message.answer(
+            text="Список задач:",
+            reply_markup=await inline.kb_tasks_list())
+    else:
+        await call.message.answer(
+            text="Список задач пуст",
+            reply_markup=await inline.kb_tasks_list())
     await call.message.delete_reply_markup()
     await call.message.delete()
     await MessagesHandler.base_st.set()
@@ -345,10 +351,20 @@ async def right_side(call: types.CallbackQuery, state: FSMContext):
             pass
         await call.message.delete_reply_markup()
         await call.message.edit_text(f'Включена задача: {inst[4]}')
-        await call.bot.send_message(
-            chat_id=chat_id,
-            text=f'Список задач:',
-            reply_markup=await inline.kb_tasks_list())
+        messages = await get_messages()
+        if messages:
+            await call.message.answer(
+                text="Список задач:",
+                reply_markup=await inline.kb_tasks_list())
+        else:
+            await call.message.answer(
+                text="Список задач пуст",
+                reply_markup=await inline.kb_tasks_list())
+
+        # await call.bot.send_message(
+        #     chat_id=chat_id,
+        #     text=f'Список задач:',
+        #     reply_markup=await inline.kb_tasks_list())
 
     elif query_params[2] == "status_off":
         await turn_off(query_params[1])
@@ -364,12 +380,22 @@ async def right_side(call: types.CallbackQuery, state: FSMContext):
         except Exception as exxxx:
             await call.bot.send_message(
                 chat_id=chat_id,
-                text=f"Задача {inst[4]} выключена.")
+                text=f"Выключена задача: '{inst[4]}'")
         await call.message.delete()
-        await call.bot.send_message(
-            chat_id=chat_id,
-            text=f'Список задач:',
-            reply_markup=await inline.kb_tasks_list())
+        messages = await get_messages()
+        if messages:
+            await call.message.answer(
+                text="Список задач:",
+                reply_markup=await inline.kb_tasks_list())
+        else:
+            await call.message.answer(
+                text="Список задач пуст",
+                reply_markup=await inline.kb_tasks_list())
+
+        # await call.bot.send_message(
+        #     chat_id=chat_id,
+        #     text=f'Список задач:',
+        #     reply_markup=await inline.kb_tasks_list())
 
     elif query_params[2] == "ch":
         async with state.proxy() as data:
@@ -399,12 +425,24 @@ async def right_side(call: types.CallbackQuery, state: FSMContext):
                 pass
             await call.message.edit_text(
                 # chat_id=chat_id,
-                text=f"Задача '{inst[4]}' удалена.")
+                text=f"Удалена задача: '{inst[4]}'.")
                 # reply_markup=inline.kb_back_to_main())
-            await call.bot.send_message(
-                chat_id=chat_id,
-                text="Возврат в главное меню",
-                reply_markup=inline.kb_back_to_main())
+            messages = await get_messages()
+            if messages:
+                await call.message.answer(
+                    text="Список задач:",
+                    reply_markup=await inline.kb_tasks_list())
+            else:
+                await call.message.answer(
+                    text="Список задач пуст",
+                    reply_markup=await inline.kb_tasks_list())
+
+            # await call.bot.send_message(
+            #     chat_id=chat_id,
+            #     text="Список задач",
+            #     # reply_markup=inline.kb_back_to_main())
+            #     reply_markup=await inline.kb_tasks_list())
+
         except Exception as exx:
             await call.message.edit_text(f"Ошибка удаления задачи '{inst[4]}': {exx}.")
 
@@ -421,16 +459,16 @@ async def right_side_individual(call: types.CallbackQuery, state: FSMContext):
                 job_id=inst[5],
                 scheduler=scheduler)
             await call.message.edit_text(
-                text=f"Задача '{inst[4]}' выключена"
+                text=f"Выключена задача: '{inst[4]}'"
             )
         except Exception as exxxx:
             await call.message.edit_text(
                 # chat_id=chat_id,
-                text=f"Задача '{inst[4]}' выключена")
+                text=f"Выключена задача: '{inst[4]}'")
         # await call.message.delete()
         await call.bot.send_message(
             chat_id=chat_id,
-            text=f"Задача '{inst[4]}'",
+            text=f"Задача: '{inst[4]}'",
             reply_markup=await inline.single_info(inst_id=inst[0]))
         # async with state.proxy() as data:
         #     data["message_to_del"] = msg_to_del.message_id
@@ -452,13 +490,13 @@ async def right_side_individual(call: types.CallbackQuery, state: FSMContext):
             await turn_on(query_params[1])
             await call.bot.send_message(
                 chat_id=chat_id,
-                text=f"Выключена задача: '{inst[4]}'"
+                text=f"Включена задача: '{inst[4]}'"
             )
             # print(new_jo)
         except Exception as ex:
             await call.bot.send_message(
                 chat_id=chat_id,
-                text=f"Не выключена задача: '{inst[4]}'")
+                text=f"Не включена задача: '{inst[4]}'")
         try:
             scheduler.start()
         except:
@@ -467,7 +505,7 @@ async def right_side_individual(call: types.CallbackQuery, state: FSMContext):
         # await call.message.delete()
         await call.bot.send_message(
             chat_id=chat_id,
-            text=f"Задача '{inst[4]}'",
+            text=f"Задача: '{inst[4]}'",
             reply_markup=await inline.single_info(inst[0]))
         # async with state.proxy() as data:
         #     data["message_to_del"] = msg_to_del.message_id
@@ -497,18 +535,31 @@ async def right_side_individual(call: types.CallbackQuery, state: FSMContext):
                 await delete_job(
                     inst[5],
                     scheduler=scheduler)
-            except:
-                pass
-            await call.message.edit_text(
-                # chat_id=chat_id,
-                text=f"Удалена задача: {inst[4]}")
+            except Exception as exxx:
+                print(f"Job is not deleted: {exxx}")
             await call.bot.send_message(
+                # chat_id=chat_id,
                 chat_id=chat_id,
-                text=f"Возврат в главное меню",
-                reply_markup=inline.kb_back_to_main()
-            )
+                text=f"Удалена задача: '{inst[4]}'")
+            print('here')
+            messages = await get_messages()
+            if messages:
+                await call.message.answer(
+                    text="Список задач:",
+                    reply_markup=await inline.kb_tasks_list())
+            else:
+                await call.message.answer(
+                    text="Список задач пуст",
+                    reply_markup=await inline.kb_tasks_list())
+
+            # await call.bot.send_message(
+            #     chat_id=chat_id,
+            #     text="Список задач:",
+            #     reply_markup=await inline.kb_tasks_list())
+            print('and here')
             # async with state.proxy() as data:
             #     data["message_to_del"] = msg_to_del.message_id
+            await call.message.delete()
 
         except Exception as exx:
             await call.message.edit_text(f"Ошибка удаления задачи '{inst[4]}': {exx}")
