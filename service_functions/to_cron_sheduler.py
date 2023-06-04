@@ -1,9 +1,19 @@
 from datetime import datetime
 from aiogram import Bot
+from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from decouple import config
-
+from sqlalchemy import create_engine
 
 bot = Bot(config("BOT_TOKEN"), parse_mode="html")
+
+URL = f'postgresql://{config("POSTGRES_USER")}:{config("POSTGRES_PASSWORD")}@{config("POSTGRES_HOSTNAME")}:{config("DATABASE_PORT")}/{config("POSTGRES_DB")}'
+engine = create_engine(URL)
+
+
+scheduler = AsyncIOScheduler(timezone="Europe/Moscow")
+scheduler.add_jobstore('sqlalchemy', engine=engine)
+jobstore = SQLAlchemyJobStore(engine=engine)
 
 
 async def test_msg(inst, chat_id, chat_admin_id):
@@ -80,5 +90,8 @@ async def create_job(inst, chat_to_send, chat_id, cron_date_dict, job_id, schedu
         return(f"11Ошибка при создании расписания отправки {exxxx}")
 
 
-async def delete_job(job_id, scheduler):
-    scheduler.remove_job(f"{job_id}")
+async def delete_job(job_id):
+    try:
+        scheduler.remove_job(job_id=str(job_id))
+    except Exception as ex:
+        print("JOB not DELETED", ex)

@@ -98,10 +98,10 @@ async def single_info(inst_id):
     return kb
 
 
-async def kb_reply_to_users_chat(users_chat):
-    info_callback = CallbackData("to_reply", "users_chat_id")
+async def kb_reply_to_users_chat(users_chat, user_name):
+    info_callback = CallbackData("to_reply", "users_chat_id", "user_name")
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton("Ответить", callback_data=info_callback.new(users_chat_id=users_chat))],
+        [InlineKeyboardButton("Ответить", callback_data=info_callback.new(users_chat_id=users_chat, user_name=user_name))],
         [InlineKeyboardButton('Главное меню', callback_data='back_main')]
     ])
     return kb

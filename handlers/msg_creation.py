@@ -4,10 +4,12 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.utils.exceptions import BadRequest
 from decouple import config
+
 from bot_main import scheduler
 from keyboards import inline
 from database.db_message import (create_message, delete_message, get_message, turn_on, turn_off,
                                  update_schedule, get_messages)
+from keyboards.inline import kb_reply_to_users_chat
 from service_functions.to_cron_sheduler import get_cron_date, create_job, delete_job
 
 
@@ -33,10 +35,6 @@ class NewMessageFromUser(StatesGroup):
     reply = State()
 
 
-async def get_sched(sche):
-    return sche
-
-
 async def main_menu_button(call: types.CallbackQuery, state: FSMContext):
     try:
         await call.message.delete_reply_markup()
@@ -46,14 +44,12 @@ async def main_menu_button(call: types.CallbackQuery, state: FSMContext):
             text=f"Hello, {name}!",
             reply_markup=inline.kb_main_menu())
     except BadRequest:
-        await call.message.delete()
         await call.message.delete_reply_markup()
         await state.finish()
         name = call.from_user.first_name
-        await call.message.answer(
+        await call.message.edit_text(
             text=f"Hello, {name}!",
             reply_markup=inline.kb_main_menu())
-        await call.message.delete()
 
 
 async def create_msg_step1(call: types.CallbackQuery, state: FSMContext):
@@ -149,7 +145,6 @@ async def create_msg_step4(msg: types.Message, state: FSMContext):
             raise Exception("list index out of range")
         cron_date_dict = await get_cron_date(msg.text)
         test_instance = [111, 'off', {'caption': 'test_caption_text'}, cron_date_dict, 'test_name1', 'aaa']
-        print(type(cron_date_dict))
         new_jo = await create_job(
             inst=test_instance,
             chat_to_send=chat_to_send,
@@ -323,8 +318,8 @@ async def right_side(call: types.CallbackQuery, state: FSMContext):
                 text=f'Задача не была включена:  {ex}')
         # try:
         #     await scheduler.start()
-        # except:
-        #     pass
+        # except Exception as EXX:
+        #     print(f'{EXX}')
         await call.message.delete_reply_markup()
         await call.message.edit_text(f'Включена задача: {inst[4]}')
         messages = await get_messages()
@@ -342,8 +337,7 @@ async def right_side(call: types.CallbackQuery, state: FSMContext):
         await call.message.delete_reply_markup()
         try:
             result_del = await delete_job(
-                job_id=inst[5],
-                scheduler=scheduler)
+                job_id=inst[5])
             print(result_del)
             await call.bot.send_message(
                 chat_id=chat_id,
@@ -385,8 +379,7 @@ async def right_side(call: types.CallbackQuery, state: FSMContext):
             await delete_message(query_params[1])
             try:
                 await delete_job(
-                    inst[5],
-                    scheduler=scheduler)
+                    inst[5])
             except:
                 pass
             await call.message.edit_text(
@@ -414,8 +407,7 @@ async def right_side_individual(call: types.CallbackQuery, state: FSMContext):
         await call.message.delete_reply_markup()
         try:
             await delete_job(
-                job_id=inst[5],
-                scheduler=scheduler)
+                job_id=inst[5])
             await call.message.edit_text(
                 text=f"Выключена задача: '{inst[4]}'"
             )
@@ -451,8 +443,8 @@ async def right_side_individual(call: types.CallbackQuery, state: FSMContext):
                 text=f"Не включена задача: '{inst[4]}'")
         # try:
         #     scheduler.start()
-        # except:
-        #     pass
+        # except Exception as EXXX:
+        #     print(f"{EXXX}")
         await call.message.delete_reply_markup()
         await call.bot.send_message(
             chat_id=chat_id,
@@ -479,14 +471,12 @@ async def right_side_individual(call: types.CallbackQuery, state: FSMContext):
             await delete_message(query_params[1])
             try:
                 await delete_job(
-                    inst[5],
-                    scheduler=scheduler)
+                    inst[5])
             except Exception as exxx:
                 print(f"Job is not deleted: {exxx}")
             await call.bot.send_message(
                 chat_id=chat_id,
                 text=f"Удалена задача: '{inst[4]}'")
-            print('here')
             messages = await get_messages()
             if messages:
                 await call.message.answer(
@@ -565,8 +555,7 @@ async def change_schedule2(call: types.CallbackQuery, state: FSMContext):
 
                 try:
                     await delete_job(
-                        inst[5],
-                        scheduler=scheduler)
+                        inst[5])
                 except:
                     pass
                 if inst[1] == 'on':
@@ -596,11 +585,30 @@ async def change_schedule2(call: types.CallbackQuery, state: FSMContext):
     await state.finish()
 
 
+async def any_user_message(msg: types.Message, state: FSMContext):
+    if msg.from_user.id != chat_id:
+        message = msg.text
+        user_id = msg.from_user.id
+        msg_chat_id = msg.chat.id
+        user_name = msg.from_user.first_name
+        await msg.bot.send_message(
+            text=f"New message: '{message}'.\n"
+                 f"From: {user_id}\n"
+                 f"Name: {user_name}.",
+            chat_id=chat_id,
+            reply_markup=await kb_reply_to_users_chat(users_chat=msg_chat_id, user_name=user_name)
+        )
+
+
 async def reply_to_user(call: types.CallbackQuery, state: FSMContext):
     call_data = call.data.split(':')
     user_chat_id = call_data[1]
+    user_name = call_data[2]
+    msg_to_del = call.message.message_id
     async with state.proxy() as data:
         data['users_chat_id'] = user_chat_id
+        data['user_name'] = user_name
+        data['msg_to_del'] = msg_to_del
     await call.message.edit_text(
         text="Введите текст ответа",
         reply_markup=inline.kb_back_to_main()
@@ -611,13 +619,19 @@ async def reply_to_user(call: types.CallbackQuery, state: FSMContext):
 async def reply_to_user2(msg: types.Message, state: FSMContext):
     message_text = msg.text
     async with state.proxy() as data:
+        us_ch_id = data.get("users_chat_id")
+        us_na = data.get("user_name")
+        m_t_d_id = data.get("msg_to_del")
         await msg.bot.send_message(
             text=f"{message_text}",
-            chat_id=data("users_chat_id")
+            chat_id=int(us_ch_id)
         )
-    await msg.edit_text(
+    await msg.bot.delete_message(chat_id=chat_id, message_id=m_t_d_id)
+    await msg.bot.send_message(
+        chat_id=chat_id,
         text=f"Сообщение: '{message_text}'\n"
-             f"отправлено в: '{data('users_chat_id')}'"
+             f"отправлено в: '{us_ch_id}'\n"
+             f"для: '{us_na}'"
     )
     await msg.bot.send_message(
         chat_id=chat_id,
@@ -644,3 +658,4 @@ def register(dp: Dispatcher):
     dp.register_callback_query_handler(change_schedule2, state=MessagesHandler.ch_ind_sch_y_n)
     dp.register_callback_query_handler(reply_to_user)
     dp.register_message_handler(reply_to_user2, state=NewMessageFromUser.reply)
+    dp.register_message_handler(any_user_message)
