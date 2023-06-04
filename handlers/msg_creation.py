@@ -29,6 +29,10 @@ class MessagesHandler(StatesGroup):
     ch_ind_sch = State()
 
 
+class NewMessageFromUser(StatesGroup):
+    reply = State()
+
+
 async def get_sched(sche):
     return sche
 
@@ -317,10 +321,10 @@ async def right_side(call: types.CallbackQuery, state: FSMContext):
             await call.bot.send_message(
                 chat_id=chat_id,
                 text=f'Задача не была включена:  {ex}')
-        try:
-            await scheduler.start()
-        except:
-            pass
+        # try:
+        #     await scheduler.start()
+        # except:
+        #     pass
         await call.message.delete_reply_markup()
         await call.message.edit_text(f'Включена задача: {inst[4]}')
         messages = await get_messages()
@@ -445,10 +449,10 @@ async def right_side_individual(call: types.CallbackQuery, state: FSMContext):
             await call.bot.send_message(
                 chat_id=chat_id,
                 text=f"Не включена задача: '{inst[4]}'")
-        try:
-            scheduler.start()
-        except:
-            pass
+        # try:
+        #     scheduler.start()
+        # except:
+        #     pass
         await call.message.delete_reply_markup()
         await call.bot.send_message(
             chat_id=chat_id,
@@ -592,6 +596,37 @@ async def change_schedule2(call: types.CallbackQuery, state: FSMContext):
     await state.finish()
 
 
+async def reply_to_user(call: types.CallbackQuery, state: FSMContext):
+    call_data = call.data.split(':')
+    user_chat_id = call_data[1]
+    async with state.proxy() as data:
+        data['users_chat_id'] = user_chat_id
+    await call.message.edit_text(
+        text="Введите текст ответа",
+        reply_markup=inline.kb_back_to_main()
+    )
+    await NewMessageFromUser.reply.set()
+
+
+async def reply_to_user2(msg: types.Message, state: FSMContext):
+    message_text = msg.text
+    async with state.proxy() as data:
+        await msg.bot.send_message(
+            text=f"{message_text}",
+            chat_id=data("users_chat_id")
+        )
+    await msg.edit_text(
+        text=f"Сообщение: '{message_text}'\n"
+             f"отправлено в: '{data('users_chat_id')}'"
+    )
+    await msg.bot.send_message(
+        chat_id=chat_id,
+        text="Возврат в главное меню",
+        reply_markup=inline.kb_back_to_main())
+    await msg.delete()
+    await state.finish()
+
+
 def register(dp: Dispatcher):
     dp.register_callback_query_handler(main_menu_button, text='back_main', state='*')
     dp.register_callback_query_handler(create_msg_step1, text='create_msg')
@@ -607,3 +642,5 @@ def register(dp: Dispatcher):
     dp.register_callback_query_handler(right_side_individual, state=MessagesHandler.individual)
     dp.register_message_handler(change_schedule1, state=MessagesHandler.ch_ind_sch)
     dp.register_callback_query_handler(change_schedule2, state=MessagesHandler.ch_ind_sch_y_n)
+    dp.register_callback_query_handler(reply_to_user)
+    dp.register_message_handler(reply_to_user2, state=NewMessageFromUser.reply)

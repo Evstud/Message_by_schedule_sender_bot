@@ -22,6 +22,7 @@ async def main():
     storage = MemoryStorage()
     dp = Dispatcher(bot, storage=storage)
 
+    # scheduler = AsyncIOScheduler(timezone="Europe/Moscow")
     scheduler.start()
     settings.register_handlers(dp)
     scheduler.print_jobs()
