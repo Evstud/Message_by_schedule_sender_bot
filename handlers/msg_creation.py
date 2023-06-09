@@ -601,6 +601,7 @@ async def any_user_message(msg: types.Message, state: FSMContext):
 
 
 async def reply_to_user(call: types.CallbackQuery, state: FSMContext):
+    await state.finish()
     call_data = call.data.split(':')
     user_chat_id = call_data[1]
     user_name = call_data[2]
@@ -656,6 +657,6 @@ def register(dp: Dispatcher):
     dp.register_callback_query_handler(right_side_individual, state=MessagesHandler.individual)
     dp.register_message_handler(change_schedule1, state=MessagesHandler.ch_ind_sch)
     dp.register_callback_query_handler(change_schedule2, state=MessagesHandler.ch_ind_sch_y_n)
-    dp.register_callback_query_handler(reply_to_user)
+    dp.register_callback_query_handler(reply_to_user, state='*')
     dp.register_message_handler(reply_to_user2, state=NewMessageFromUser.reply)
-    dp.register_message_handler(any_user_message)
+    dp.register_message_handler(any_user_message, state='*')
